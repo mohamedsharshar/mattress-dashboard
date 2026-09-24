@@ -3,9 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Category extends Model
+class Product extends Model
 {
     /*
     |--------------------------------------------------------------------------
@@ -14,9 +15,13 @@ class Category extends Model
     */
 
     protected $fillable = [
+        'brand_id',
+        'category_id',
         'name',
+        'name_en',
         'slug',
-        'sort_order',
+        'description',
+        'unit',
         'is_active',
     ];
 
@@ -27,7 +32,6 @@ class Category extends Model
     */
 
     protected $casts = [
-        'sort_order' => 'integer',
         'is_active' => 'boolean',
     ];
 
@@ -38,32 +42,47 @@ class Category extends Model
     */
 
     /**
-     * Price lists belonging to this category.
-     *
-     * Example:
-     * Mattresses category
-     * ├── Bed Janssen price list
-     * ├── Englander price list
-     * └── Air Bed price list
+     * الشركة المصنعة للمنتج.
      */
-    public function priceLists(): HasMany
+    public function brand(): BelongsTo
     {
-        return $this->hasMany(PriceList::class);
+        return $this->belongsTo(Brand::class);
     }
 
     /**
-     * Products belonging to this category.
-     *
-     * Example:
-     *
-     * Mattresses
-     * ├── City Englander
-     * ├── Pocket
-     * ├── Medical
-     * └── Brilliant
+     * تصنيف المنتج.
      */
-    public function products(): HasMany
+    public function category(): BelongsTo
     {
-        return $this->hasMany(Product::class);
+        return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * الـ Variants التابعة للمنتج.
+     *
+     * Examples:
+     *
+     * Product: City Englander
+     *
+     * Variants:
+     * - 15 CM
+     * - 20 CM
+     * - 25 CM
+     *
+     *
+     * Product: Medical
+     *
+     * Variants:
+     * - 15 CM
+     * - 20 CM
+     * - 25 CM
+     * - 25 CM 1S
+     * - 27 CM 1S
+     * - 30 CM 2S
+     */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class)
+            ->orderBy('sort_order');
     }
 }

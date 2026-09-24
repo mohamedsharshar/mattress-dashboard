@@ -3,9 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Category extends Model
+class ProductVariant extends Model
 {
     /*
     |--------------------------------------------------------------------------
@@ -14,8 +15,11 @@ class Category extends Model
     */
 
     protected $fillable = [
+        'product_id',
         'name',
-        'slug',
+        'thickness_cm',
+        'specification',
+        'description',
         'sort_order',
         'is_active',
     ];
@@ -27,6 +31,7 @@ class Category extends Model
     */
 
     protected $casts = [
+        'thickness_cm' => 'decimal:2',
         'sort_order' => 'integer',
         'is_active' => 'boolean',
     ];
@@ -38,32 +43,33 @@ class Category extends Model
     */
 
     /**
-     * Price lists belonging to this category.
-     *
-     * Example:
-     * Mattresses category
-     * ├── Bed Janssen price list
-     * ├── Englander price list
-     * └── Air Bed price list
+     * المنتج الأساسي.
      */
-    public function priceLists(): HasMany
+    public function product(): BelongsTo
     {
-        return $this->hasMany(PriceList::class);
+        return $this->belongsTo(Product::class);
     }
 
     /**
-     * Products belonging to this category.
+     * الـ SKUs التابعة لهذا الـ Variant.
      *
      * Example:
      *
-     * Mattresses
-     * ├── City Englander
-     * ├── Pocket
-     * ├── Medical
-     * └── Brilliant
+     * Variant:
+     * Medical 30 CM 2S
+     *
+     * SKUs:
+     * 100*200
+     * 110*200
+     * 120*200
+     * ...
+     * 200*200
      */
-    public function products(): HasMany
+    public function skus(): HasMany
     {
-        return $this->hasMany(Product::class);
+        return $this->hasMany(
+            ProductSku::class,
+            'product_variant_id'
+        )->orderBy('sort_order');
     }
 }

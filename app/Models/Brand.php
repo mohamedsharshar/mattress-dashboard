@@ -7,6 +7,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Brand extends Model
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Mass Assignment
+    |--------------------------------------------------------------------------
+    */
+
     protected $fillable = [
         'name',
         'name_en',
@@ -18,8 +24,47 @@ class Brand extends Model
         'address',
         'is_active',
     ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Casts
+    |--------------------------------------------------------------------------
+    */
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Price lists issued by this brand.
+     *
+     * Example:
+     * Englander -> April 2026 price list
+     */
     public function priceLists(): HasMany
     {
         return $this->hasMany(PriceList::class);
+    }
+
+    /**
+     * Products belonging to this brand.
+     *
+     * Example:
+     *
+     * Englander
+     * ├── Brilliant
+     * ├── City Englander
+     * ├── Victoria
+     * └── Classic
+     */
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
     }
 }

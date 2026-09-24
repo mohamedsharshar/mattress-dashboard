@@ -13,128 +13,258 @@ class BedJanssenMiltonBlanketsToppersSeeder extends Seeder
 {
     public function run(): void
     {
-        $brand = Brand::where('name_en', 'Bed Janssen')->first();
-        $miltonCategory = Category::where('slug', 'milton-covers')->first();
-        $blanketCategory = Category::where('slug', 'blankets')->first();
-        $topperCategory = Category::where('slug', 'topper-mattresses')->first();
+        $brand = Brand::where('name_en', 'Bed Janssen')->firstOrFail();
 
-        // ============ 1) قائمة الميلتون ============
-        $miltonList = PriceList::create([
-            'brand_id' => $brand->id,
-            'category_id' => $miltonCategory->id,
-            'title' => 'ميلتون بيد يانسن',
-            'effective_date' => '2026-04-02',
-        ]);
+        $miltonCategory = Category::where('slug', 'milton-covers')->firstOrFail();
+        $blanketCategory = Category::where('slug', 'blankets')->firstOrFail();
+        $topperCategory = Category::where('slug', 'topper-mattresses')->firstOrFail();
 
-        $miltonSizes = ['90', '100', '120', '140', '150', '160', '170', '180', '200'];
+        /*
+        |--------------------------------------------------------------------------
+        | Milton
+        |--------------------------------------------------------------------------
+        */
+
+        $miltonList = $this->resetPriceList(
+            brandId: $brand->id,
+            categoryId: $miltonCategory->id,
+            title: 'ميلتون بيد يانسن',
+        );
+
+        $miltonSizes = [
+            '90',
+            '100',
+            '120',
+            '140',
+            '150',
+            '160',
+            '170',
+            '180',
+            '200',
+        ];
 
         $miltonColumns = [
-            'arbaa_asatk' => [
-                'name' => 'ميلتون فاير (اربع اساتك من الجوانب)',
+            [
+                'name' => 'ميلتون فاير (اربع استك من الجوانب)',
                 'custom_meter_price' => 220,
-                'prices' => [360, 400, 480, 560, 600, 640, 680, 720, 800],
+                'prices' => [
+                    360,
+                    400,
+                    480,
+                    560,
+                    600,
+                    640,
+                    680,
+                    720,
+                    800,
+                ],
             ],
-            'bshkir' => [
+            [
                 'name' => 'ميلتون بشكير',
                 'custom_meter_price' => 260,
-                'prices' => [430, 470, 560, 660, 700, 750, 800, 840, 940],
+                'prices' => [
+                    430,
+                    470,
+                    560,
+                    660,
+                    700,
+                    750,
+                    800,
+                    840,
+                    940,
+                ],
             ],
         ];
 
-        $this->seedMatrixColumns($miltonList, $miltonColumns, $miltonSizes, 200);
+        $this->seedMatrix(
+            $miltonList,
+            $miltonColumns,
+            $miltonSizes,
+            200
+        );
 
-        // ============ 2) قائمة اللحف ============
-        $blanketList = PriceList::create([
-            'brand_id' => $brand->id,
-            'category_id' => $blanketCategory->id,
-            'title' => 'لحف بيد يانسن',
-            'effective_date' => '2026-04-02',
-        ]);
+        /*
+        |--------------------------------------------------------------------------
+        | Blankets
+        |--------------------------------------------------------------------------
+        */
+
+        $blanketList = $this->resetPriceList(
+            brandId: $brand->id,
+            categoryId: $blanketCategory->id,
+            title: 'لحف بيد يانسن',
+        );
 
         $blankets = [
-            ['لحاف فاير', '220*180', 940],
-            ['لحاف فاير', '240*220', 1260],
-            ['لحاف ميكرو فاير', '220*180', 2050],
-            ['لحاف ميكرو فاير', '240*220', 2730],
+            [
+                'name' => 'لحاف فاير',
+                'sizes' => [
+                    '220*180' => 940,
+                    '240*220' => 1260,
+                ],
+            ],
+            [
+                'name' => 'لحاف ميكرو فاير',
+                'sizes' => [
+                    '220*180' => 2050,
+                    '240*220' => 2730,
+                ],
+            ],
         ];
 
-        $sortOrder = 1;
-        foreach ($blankets as [$name, $sizeLabel, $price]) {
+        foreach ($blankets as $index => $blanket) {
             $productLine = ProductLine::create([
                 'price_list_id' => $blanketList->id,
-                'name' => $name,
-                'sort_order' => $sortOrder++,
+                'name' => $blanket['name'],
+                'sort_order' => $index + 1,
             ]);
 
-            $size = Size::firstOrCreate(
-                ['label' => $sizeLabel],
-                ['sort_order' => 200]
-            );
+            foreach ($blanket['sizes'] as $sizeLabel => $price) {
+                $size = Size::firstOrCreate(
+                    ['label' => $sizeLabel],
+                    ['sort_order' => 200]
+                );
 
-            $productLine->prices()->create([
-                'size_id' => $size->id,
-                'price' => $price,
-            ]);
+                $productLine->prices()->create([
+                    'size_id' => $size->id,
+                    'price' => $price,
+                ]);
+            }
         }
 
-        // ============ 3) قائمة المراتب التطرية (Topper) ============
-        $topperList = PriceList::create([
-            'brand_id' => $brand->id,
-            'category_id' => $topperCategory->id,
-            'title' => 'مراتب تطرية بيد يانسن - ارتفاع 5 سم',
-            'effective_date' => '2026-04-02',
-        ]);
+        /*
+        |--------------------------------------------------------------------------
+        | Toppers
+        |--------------------------------------------------------------------------
+        */
 
-        $topperSizes = ['90', '100', '120', '140', '150', '160', '170', '180', '200'];
+        $topperList = $this->resetPriceList(
+            brandId: $brand->id,
+            categoryId: $topperCategory->id,
+            title: 'مراتب تطرية بيد يانسن - ارتفاع 5 سم',
+        );
+
+        $topperSizes = [
+            '90',
+            '100',
+            '120',
+            '140',
+            '150',
+            '160',
+            '170',
+            '180',
+            '200',
+        ];
 
         $topperColumns = [
-            'fiber_800' => [
-                'name' => 'تطرية فاير 800جم',
-                'prices' => [1170, 1290, 1550, 1810, 1940, 2070, 2200, 2330, 2590],
+            [
+                'name' => 'مرتبة تطرية فاير 800جم',
+                'thickness_cm' => 5,
+                'prices' => [
+                    1170,
+                    1290,
+                    1550,
+                    1810,
+                    1940,
+                    2070,
+                    2200,
+                    2330,
+                    2590,
+                ],
             ],
-            'microfiber_800' => [
-                'name' => 'تطرية مايكرو فاير 800جم',
-                'prices' => [2650, 2940, 3530, 4120, 4420, 4700, 5000, 5290, 5880],
+            [
+                'name' => 'مرتبة تطرية مايكرو فاير 800جم',
+                'thickness_cm' => 5,
+                'prices' => [
+                    2650,
+                    2940,
+                    3530,
+                    4120,
+                    4420,
+                    4700,
+                    5000,
+                    5290,
+                    5880,
+                ],
             ],
-            'memory_foam' => [
-                'name' => 'تطرية ميموري فوم',
-                'prices' => [4390, 4880, 5860, 6840, 7320, 7810, 8300, 8790, 9770],
+            [
+                'name' => 'مرتبة تطرية ميموري فوم',
+                'thickness_cm' => 5,
+                'prices' => [
+                    4390,
+                    4880,
+                    5860,
+                    6840,
+                    7320,
+                    7810,
+                    8300,
+                    8790,
+                    9770,
+                ],
             ],
         ];
 
-        $this->seedMatrixColumns($topperList, $topperColumns, $topperSizes, 200);
+        $this->seedMatrix(
+            $topperList,
+            $topperColumns,
+            $topperSizes,
+            300
+        );
     }
 
-    /**
-     * دالة مساعدة عشان منكررش نفس الكود في كل قائمة matrix
-     */
-    private function seedMatrixColumns(PriceList $priceList, array $columns, array $sizeLabels, int $sizeSortBase): void
-    {
+    private function resetPriceList(
+        int $brandId,
+        int $categoryId,
+        string $title
+    ): PriceList {
+        $priceList = PriceList::updateOrCreate(
+            [
+                'brand_id' => $brandId,
+                'category_id' => $categoryId,
+                'title' => $title,
+            ],
+            [
+                'effective_date' => '2026-04-02',
+                'is_active' => true,
+            ]
+        );
+
+        $priceList->productLines()->delete();
+
+        return $priceList;
+    }
+
+    private function seedMatrix(
+        PriceList $priceList,
+        array $columns,
+        array $sizeLabels,
+        int $sizeSortBase
+    ): void {
         $productLines = [];
-        $i = 0;
-        foreach ($columns as $key => $col) {
-            $productLines[$key] = ProductLine::create([
+
+        foreach ($columns as $index => $column) {
+            $productLines[$index] = ProductLine::create([
                 'price_list_id' => $priceList->id,
-                'name' => $col['name'],
-                'custom_meter_price' => $col['custom_meter_price'] ?? null,
-                'sort_order' => $i + 1,
+                'name' => $column['name'],
+                'thickness_cm' => $column['thickness_cm'] ?? null,
+                'custom_meter_price' => $column['custom_meter_price'] ?? null,
+                'sort_order' => $index + 1,
             ]);
-            $i++;
         }
 
-        foreach ($sizeLabels as $rowIndex => $sizeLabel) {
+        foreach ($sizeLabels as $sizeIndex => $sizeLabel) {
             $size = Size::firstOrCreate(
                 ['label' => $sizeLabel],
-                ['sort_order' => $sizeSortBase + $rowIndex]
+                ['sort_order' => $sizeSortBase + $sizeIndex]
             );
 
-            $i = 0;
-            foreach ($columns as $key => $col) {
-                $productLines[$key]->prices()->create([
-                    'size_id' => $size->id,
-                    'price' => $col['prices'][$i],
-                ]);
-                $i++;
+            foreach ($columns as $columnIndex => $column) {
+                $productLines[$columnIndex]
+                    ->prices()
+                    ->create([
+                        'size_id' => $size->id,
+                        'price' => $column['prices'][$sizeIndex],
+                    ]);
             }
         }
     }

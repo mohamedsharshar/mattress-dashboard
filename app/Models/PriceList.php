@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PriceList extends Model
 {
@@ -16,25 +14,34 @@ class PriceList extends Model
         'round_addition_price',
         'quarter_addition_price',
         'notes',
-        'is_active',
+        'is_active'
     ];
 
     protected $casts = [
         'effective_date' => 'date',
+        'round_addition_price' => 'decimal:2',
+        'quarter_addition_price' => 'decimal:2',
+        'is_active' => 'boolean'
     ];
 
-    public function brand(): BelongsTo
+    public function brand()
     {
         return $this->belongsTo(Brand::class);
     }
 
-    public function category(): BelongsTo
+    public function category()
     {
         return $this->belongsTo(Category::class);
     }
 
-    public function productLines(): HasMany
+    public function productLines()
     {
-        return $this->hasMany(ProductLine::class)->orderBy('sort_order');
+        return $this->hasMany(ProductLine::class)
+            ->orderBy('sort_order');
+    }
+
+    public function skuPrices()
+    {
+        return $this->hasMany(PriceListSkuPrice::class);
     }
 }

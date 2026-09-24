@@ -10,28 +10,66 @@ class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
+        User::updateOrCreate(
+            [
+                'email' => 'test@example.com',
+            ],
+            [
+                'name' => 'Test User',
+                'password' => bcrypt('password'),
+            ]
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        /*
+        |--------------------------------------------------------------------------
+        | Legacy Source Data
+        |--------------------------------------------------------------------------
+        */
 
         $this->call([
             BrandSeeder::class,
             CategorySeeder::class,
+
+            // Bed Janssen
             BedJanssenKingCottonSeeder::class,
             BedJanssenFullMattressSeeder::class,
             BedJanssenPillowsSeeder::class,
             BedJanssenMiltonBlanketsToppersSeeder::class,
+
+            // Englander
             EnglanderMattressSeeder::class,
             EnglanderAccessoriesSeeder::class,
+
+            // Janssen Prestige
             JanssenPrestigeSeeder::class,
+
+            // Air Bed
+            AirBedMattressSeeder::class,
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | New Inventory Catalog
+        |--------------------------------------------------------------------------
+        |
+        | Converts:
+        |
+        | ProductLine
+        | ProductLinePrice
+        |
+        | into:
+        |
+        | Product
+        | ProductVariant
+        | ProductSku
+        | PriceListSkuPrice
+        |
+        */
+
+        $this->call([
+            CatalogSeeder::class,
         ]);
     }
 }
