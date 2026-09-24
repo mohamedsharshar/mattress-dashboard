@@ -21,7 +21,9 @@ class StockService
         ?int $userId = null,
         ?string $notes = null,
     ): WarehouseStock {
-        $this->assertPositiveQuantity($quantity);
+        $this->assertPositiveQuantity(
+            $quantity
+        );
 
         return DB::transaction(function () use (
             $warehouseId,
@@ -38,11 +40,17 @@ class StockService
                 $skuId
             );
 
-            $oldQuantity = (float) $stock->quantity;
-            $oldAverage = (float) $stock->average_cost;
+            $oldQuantity =
+                (float) $stock->quantity;
 
-            $newQuantity = $oldQuantity + $quantity;
-            $newAverage = $oldAverage;
+            $oldAverage =
+                (float) $stock->average_cost;
+
+            $newQuantity =
+                $oldQuantity + $quantity;
+
+            $newAverage =
+                $oldAverage;
 
             if ($unitCost !== null) {
                 $newAverage = (
@@ -53,9 +61,14 @@ class StockService
             }
 
             $stock->update([
-                'quantity' => $newQuantity,
-                'average_cost' => $newAverage,
-                'last_movement_at' => now(),
+                'quantity' =>
+                    $newQuantity,
+
+                'average_cost' =>
+                    $newAverage,
+
+                'last_movement_at' =>
+                    now(),
             ]);
 
             $this->recordMovement(
@@ -82,7 +95,9 @@ class StockService
         ?int $userId = null,
         ?string $notes = null,
     ): WarehouseStock {
-        $this->assertPositiveQuantity($quantity);
+        $this->assertPositiveQuantity(
+            $quantity
+        );
 
         return DB::transaction(function () use (
             $warehouseId,
@@ -99,7 +114,10 @@ class StockService
                 $skuId
             );
 
-            $available = $this->availableQuantity($stock);
+            $available =
+                $this->availableQuantity(
+                    $stock
+                );
 
             if ($quantity > $available) {
                 throw new DomainException(
@@ -107,15 +125,18 @@ class StockService
                 );
             }
 
-            $newQuantity =
-                (float) $stock->quantity - $quantity;
-
-            $movementCost = $unitCost
-                ?? (float) $stock->average_cost;
+            $movementCost =
+                $unitCost
+                ??
+                (float) $stock->average_cost;
 
             $stock->update([
-                'quantity' => $newQuantity,
-                'last_movement_at' => now(),
+                'quantity' =>
+                    (float) $stock->quantity
+                    - $quantity,
+
+                'last_movement_at' =>
+                    now(),
             ]);
 
             $this->recordMovement(
@@ -131,6 +152,180 @@ class StockService
             return $stock->fresh();
         });
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reserve
+    |--------------------------------------------------------------------------
+    */
+
+    public function reserve(
+        int $warehouseId,
+        int $skuId,
+        float $quantity
+    ): WarehouseStock {
+        $this->assertPositiveQuantity(
+            $quantity
+        );
+
+        return DB::transaction(function () use (
+            $warehouseId,
+            $skuId,
+            $quantity
+        ) {
+            $stock = $this->lockedStock(
+                $warehouseId,
+                $skuId
+            );
+
+            $available =
+                $this->availableQuantity(
+                    $stock
+                );
+
+            if ($quantity > $available) {
+                throw new DomainException(
+                    "Insufficient available stock for reservation. Available: {$available}, requested: {$quantity}."
+                );
+            }
+
+            $stock->update([
+                'reserved_quantity' =>
+                    (float) $stock->reserved_quantity
+                    + $quantity,
+            ]);
+
+            return $stock->fresh();
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Release Reservation
+    |--------------------------------------------------------------------------
+    */
+
+    public function release(
+        int $warehouseId,
+        int $skuId,
+        float $quantity
+    ): WarehouseStock {
+        $this->assertPositiveQuantity(
+            $quantity
+        );
+
+        return DB::transaction(function () use (
+            $warehouseId,
+            $skuId,
+            $quantity
+        ) {
+            $stock = $this->lockedStock(
+                $warehouseId,
+                $skuId
+            );
+
+            $reserved =
+                (float) $stock->reserved_quantity;
+
+            if ($quantity > $reserved) {
+                throw new DomainException(
+                    "Cannot release {$quantity}. Reserved quantity is {$reserved}."
+                );
+            }
+
+            $stock->update([
+                'reserved_quantity' =>
+                    $reserved - $quantity,
+            ]);
+
+            return $stock->fresh();
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Consume Reserved Stock
+    |--------------------------------------------------------------------------
+    */
+
+    public function consumeReserved(
+        int $warehouseId,
+        int $skuId,
+        float $quantity,
+        string $movementType,
+        ?Model $reference = null,
+        ?int $userId = null,
+        ?string $notes = null,
+    ): WarehouseStock {
+        $this->assertPositiveQuantity(
+            $quantity
+        );
+
+        return DB::transaction(function () use (
+            $warehouseId,
+            $skuId,
+            $quantity,
+            $movementType,
+            $reference,
+            $userId,
+            $notes
+        ) {
+            $stock = $this->lockedStock(
+                $warehouseId,
+                $skuId
+            );
+
+            $reserved =
+                (float) $stock->reserved_quantity;
+
+            $physical =
+                (float) $stock->quantity;
+
+            if ($quantity > $reserved) {
+                throw new DomainException(
+                    "Reserved quantity is insufficient. Reserved: {$reserved}, requested: {$quantity}."
+                );
+            }
+
+            if ($quantity > $physical) {
+                throw new DomainException(
+                    "Physical stock is insufficient."
+                );
+            }
+
+            $unitCost =
+                (float) $stock->average_cost;
+
+            $stock->update([
+                'quantity' =>
+                    $physical - $quantity,
+
+                'reserved_quantity' =>
+                    $reserved - $quantity,
+
+                'last_movement_at' =>
+                    now(),
+            ]);
+
+            $this->recordMovement(
+                stock: $stock,
+                quantityChange: -$quantity,
+                movementType: $movementType,
+                unitCost: $unitCost,
+                reference: $reference,
+                userId: $userId,
+                notes: $notes,
+            );
+
+            return $stock->fresh();
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Adjustment
+    |--------------------------------------------------------------------------
+    */
 
     public function adjustTo(
         int $warehouseId,
@@ -176,38 +371,53 @@ class StockService
                 (float) $stock->quantity;
 
             $difference =
-                $targetQuantity - $oldQuantity;
+                $targetQuantity
+                - $oldQuantity;
 
-            if (abs($difference) < 0.000001) {
+            if (
+                abs($difference)
+                < 0.000001
+            ) {
                 return $stock;
             }
 
-            $newAverage =
+            $oldAverage =
                 (float) $stock->average_cost;
 
+            $newAverage =
+                $oldAverage;
+
             if (
-                $difference > 0 &&
+                $difference > 0
+                &&
                 $unitCost !== null
+                &&
+                $targetQuantity > 0
             ) {
                 $newAverage = (
-                    ($oldQuantity * $newAverage)
+                    ($oldQuantity * $oldAverage)
                     +
                     ($difference * $unitCost)
                 ) / $targetQuantity;
             }
 
             $stock->update([
-                'quantity' => $targetQuantity,
-                'average_cost' => $newAverage,
-                'last_movement_at' => now(),
+                'quantity' =>
+                    $targetQuantity,
+
+                'average_cost' =>
+                    $newAverage,
+
+                'last_movement_at' =>
+                    now(),
             ]);
 
             $this->recordMovement(
                 stock: $stock,
                 quantityChange: $difference,
                 movementType: $movementType,
-                unitCost: $unitCost
-                    ?? (float) $stock->average_cost,
+                unitCost:
+                    $unitCost ?? $newAverage,
                 reference: $reference,
                 userId: $userId,
                 notes: $notes,
@@ -249,8 +459,11 @@ class StockService
     ): WarehouseStock {
         WarehouseStock::firstOrCreate(
             [
-                'warehouse_id' => $warehouseId,
-                'product_sku_id' => $skuId,
+                'warehouse_id' =>
+                    $warehouseId,
+
+                'product_sku_id' =>
+                    $skuId,
             ],
             [
                 'quantity' => 0,
